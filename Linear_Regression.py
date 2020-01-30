@@ -21,26 +21,31 @@ X_test = df_test[df_test.columns[:-8]]
 # Use copper as test
 
 
+from sklearn import preprocessing
+from sklearn import utils
 for i, val in enumerate(df_test.columns):
     y_train = df[df.columns[-(i+1)]]
     y_test = df_test[df_test.columns[-(i+1)]]
+    lab_enc = preprocessing.LabelEncoder()
+    training_scores_encoded =lab_enc.fit_transform(y_train)
+    test_scores_encoded=lab_enc.fit_transform(y_test)
     C =np.logspace(0, 4, 10)
-    penalty = ['l1', 'l2']
-    logistic = LogisticRegression()
+    penalty = ['l2']
+    logistic = LogisticRegression(solver='lbfgs',max_iter=100,multi_class="auto")
     hyperparameters = dict(C=C, penalty=penalty)
-    clf = GridSearchCV(logistic, hyperparameters, cv=5, verbose=0)
+    clf = GridSearchCV(logistic, hyperparameters, cv=3, verbose=0)
     print('Training model...')
-    best_model = clf.fit(X_train, y_train)
+    best_model = clf.fit(X_train, training_scores_encoded)
     print('Predicting targets...')
     y_pred_Logisticregression=best_model.predict(X_test)
-    #rfc = RandomForestClassifier(n_estimators=8, max_depth=18, random_state=randomState)
-    #print('Training model...')
-    #rfc.fit(X_train, y_train)
-    #print('Predicting targets...')
-   # pred_y = rfc.predict(X_test)
-
-    logistic_score = balanced_accuracy_score(y_test, y_pred_Logisticregression)
+    
+    
+    from sklearn.metrics import accuracy_score
+    logistic_score = balanced_accuracy_score(test_scores_encoded, y_pred_Logisticregression.round(), adjusted=False)
+    logistic_score_acc=accuracy_score(test_scores_encoded, y_pred_Logisticregression.round(), normalize=False)
     print(logistic_score)
+    print(logistic_score_acc)
+   
 
 # Vizualization Curve, estimators
 # viz_rf = ValidationCurve(RandomForestClassifier(), param_name='n_estimators',
@@ -56,6 +61,9 @@ for i, val in enumerate(df_test.columns):
 
 # Feature importance
 #viz_feat = FeatureImportances(rfc, labels=X_train.columns, relative=False)
-viz_feat = FeatureImportances(clf, labels=X_train.columns, relative=False)
-viz_feat.fit(X_train, y_train)
+from matplotlib import pyplot as plt
+%matplotlib inline
+viz_feat = FeatureImportances(logistic, labels=X_train.columns,stack=True, relative=False)
+viz_feat.fit(X_train, training_scores_encoded)
 viz_feat.show()
+plt.tight_layout()
