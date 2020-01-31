@@ -12,58 +12,59 @@ test_path = 'data/test_set.csv'
 randomState = 42
 
 # read DataFrame
-df = pd.read_csv(train_path, index_col=0)
-df_test = pd.read_csv(test_path, index_col=0)
+data = pd.read_csv(train_path, index_col=0)
+data_test = pd.read_csv(test_path, index_col=0)
 
 # separate labels
-X_train = df[df.columns[:-8]]
-X_test = df_test[df_test.columns[:-8]]
+X_train = data[data.columns[:-16]]
+X_test = data_test[data_test.columns[:-16]]
+y_location_trains = data[data.columns[-16:]]
+y_location_tests = data_test[data.columns[-16:]]
 # Use copper as test
 
 
-from sklearn import preprocessing
-from sklearn import utils
-for i, val in enumerate(df_test.columns):
-    y_train = df[df.columns[-(i+1)]]
-    y_test = df_test[df_test.columns[-(i+1)]]
-    lab_enc = preprocessing.LabelEncoder()
-    training_scores_encoded =lab_enc.fit_transform(y_train)
-    test_scores_encoded=lab_enc.fit_transform(y_test)
+scores = []
+for i in np.arange(len(y_location_trains.columns)):
+    print(y_location_trains.columns[i])
+    y_train = y_location_trains[y_location_trains.columns[i]]
+    y_test = y_location_tests[y_location_tests.columns[i]]
     C =np.logspace(0, 4, 10)
     penalty = ['l2']
-    logistic = LogisticRegression(solver='lbfgs',max_iter=100,multi_class="auto")
+    logistic = LogisticRegression(solver='lbfgs')
     hyperparameters = dict(C=C, penalty=penalty)
-    clf = GridSearchCV(logistic, hyperparameters, cv=3, verbose=0)
+    clf = GridSearchCV(logistic, hyperparameters, cv=5, verbose=0)
     print('Training model...')
-    best_model = clf.fit(X_train, training_scores_encoded)
+    best_model = clf.fit(X_train, y_train)
     print('Predicting targets...')
     y_pred_Logisticregression=best_model.predict(X_test)
-    
-    
-    from sklearn.metrics import accuracy_score
-    logistic_score = balanced_accuracy_score(test_scores_encoded, y_pred_Logisticregression.round(), adjusted=False)
-    logistic_score_acc=accuracy_score(test_scores_encoded, y_pred_Logisticregression.round(), normalize=False)
+  
+    logistic_score = balanced_accuracy_score(y_test, y_pred_Logisticregression.round(), adjusted=False)
+    #logistic_score_acc=accuracy_score(y_test, y_pred_Logisticregression)
+    scores.append(logistic_score)
     print(logistic_score)
-    print(logistic_score_acc)
-   
+    #print(logistic_score_acc)
 
-# Vizualization Curve, estimators
-# viz_rf = ValidationCurve(RandomForestClassifier(), param_name='n_estimators',
-#                          param_range=np.arange(5, 30, 1), cv=4, scoring='f1_weighted')
-# viz_rf.fit(X_train, y_train)
-# viz_rf.show()
 
-# Vizualization Curve, max depth
-# viz_rf = ValidationCurve(RandomForestClassifier(n_estimators=15), param_name='max_depth',
-#                          param_range=np.arange(5, 20, 1), cv=4, scoring='f1_weighted')
-# viz_rf.fit(X_train, y_train)
-# viz_rf.show()
+    
+    
+    #from sklearn.metrics import accuracy_score
+    #logistic_score = balanced_accuracy_score(test_scores_encoded, y_pred_Logisticregression.round(), adjusted=False)
+    #logistic_score_acc=accuracy_score(test_scores_encoded, y_pred_Logisticregression.round(), normalize=False)
+    #print(logistic_score)
+    #print(logistic_score_acc)
+data_score = pd.DataFrame(columns=['Commodity', 'score'])
+data_score['Commodity'] = y_location_trains.columns
+data_score['score'] = scores
+print(data_score)
+data_score.to_csv('/Users/monalisa/Downloads/mmai823-project-master/out/linear_scores.csv')
 
+
+print(X_train.columns)
 # Feature importance
 #viz_feat = FeatureImportances(rfc, labels=X_train.columns, relative=False)
 from matplotlib import pyplot as plt
 %matplotlib inline
-viz_feat = FeatureImportances(logistic, labels=X_train.columns,stack=True, relative=False)
-viz_feat.fit(X_train, training_scores_encoded)
-viz_feat.show()
+viz_features = FeatureImportances(logistic, labels=X_train.columns)
+viz_features.fit(X_train, y_train)
+viz_features.show()
 plt.tight_layout()
